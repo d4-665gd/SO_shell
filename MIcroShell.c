@@ -142,15 +142,12 @@ int main() {
 // Crea un proceso hijo para ejecutar un comando y configura sus entradas y salidas adecuadamente.
 void ejecutar_comando(char *comando, int entrada_fd, int salida_fd) {
     pid_t pid = fork();
-    int pipe_salida[2];//pipe adicional para capturar salida estandar
+    
     if (pid == -1) {
         perror("Error al crear el proceso hijo");
         exit(EXIT_FAILURE);
     } else if (pid == 0) { // Código que solo se ejecuta en el proceso hijo.
         // Redirige la entrada estándar si es necesario.
-        dup2(pipe_salida[1], STDOUT_FILENO);
-        close(pipe_salida[0]);
-        close(pipe_salida[1]);
         if (entrada_fd != STDIN_FILENO) {
             dup2(entrada_fd, STDIN_FILENO);
             close(entrada_fd);
