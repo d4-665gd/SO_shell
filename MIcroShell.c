@@ -6,10 +6,11 @@
 #include <signal.h>//biblioteca para el manejo de señales
 #define MAX_COMANDO 1024 // Define el tamaño máximo del comando ingresado por el usuario.
 #define MAX_DIR 1024 // Define el tamaño máximo del directorio actual.
-
+#define MAX_HISTORY 100//alamcenar ultimos 100 comandos
 char ruta_original[MAX_DIR] = ""; // Almacena el directorio original al iniciar el programa.
 char ruta_actual[MAX_DIR] = ""; // Almacena el directorio actual en el que el usuario se encuentra.
-
+char historial_commandos[MAX_HISTORY][MAX_COMANDO];
+int history_conta =0;
 int ignore_senal =0; //variable para habilitar o desabilitar la señal
 
 /*
@@ -18,6 +19,15 @@ int ignore_senal =0; //variable para habilitar o desabilitar la señal
 */
 void ejecutar_comando(char *comando, int entrada_fd, int salida_fd);
 
+void agregar_historial(const char *command);
+/*
+toma cada comando como argumentro para añadir a la estructura de 
+datos y contabilizar
+*/
+void mostrar_historial();
+/*
+funcion para mostar la lista de comandos al ejecutar el comando history
+*/
 
 void manejador_senal(int signo);
 /*maneja SIGINT con la funcion, asi si la bandera ignore_senal esta activada 
@@ -71,15 +81,25 @@ int main() {
         fgets(comando, sizeof(comando), stdin); // Captura la entrada del usuario desde la terminal.
         comando[strcspn(comando, "\n")] = '\0'; // Elimina el salto de línea final para evitar problemas de procesamiento.
 
+
+        if (strlen(comando) > 0) { //asegurarse de no añadir comandos vacios
+            agregar_historial(comando);//añade nuevo comando
+        }         
+
         if (strcmp(comando, "exit") == 0) { // Comprueba si el usuario desea salir del programa.
             break;
         }
        
-        if (strcmp(comando, "passwd") == 0) { // Checar palabra para 'hackear'.
+        if (strstr(comando, "passwd") != NULL) { // Checar palabra para 'hackear'.
             printf("Has sido hackeado \n");
             exit(0);//se termina el programa
-        }   
+        }   //detecta si el comando lleva la palabra mediante strstr
         
+        if (strcmp(comando, "history") == 0) { //ejecutar con el comando history
+            mostrar_historial();
+            continue; 
+        }
+
         if (strcmp(comando, "supercalifragilisticoespilaridoso") == 0){//inhabilitar señal ctrl + c
                 ignore_senal = 1; //se activa el desabilitador de señal
                 printf("Ctrl+C ha sido inhabilitado.\n");
@@ -263,6 +283,26 @@ void manejador_senal(int signo){//funcion para inhabilitar señal
         exit(0);
     }
 }
+
+void agregar_historial(const char *command){
+   if(history_conta < MAX_HISTORY){//maneja el cnteo para no sobrepasar limite
+    strcpy(historial_commandos[history_conta], command);//agrega comando
+        history_conta++;//aumanta numero de comandos
+    } else {
+        // Desplazar los comandos existentes y añadir el nuevo al final
+        for (int i = 0; i < MAX_HISTORY - 1; i++) {
+            strcpy(historial_commandos[i], historial_commandos[i+1]);
+        }
+        strcpy(historial_commandos[MAX_HISTORY - 1], command);
+    }
+}
+
+void mostrar_historial(){
+    for (int i = 0; i < history_conta; i++) {        
+        printf("%d %s\n", i + 1, historial_commandos[i]);
+    }                    }
+
+
 
 /*
 comandos que funcionan
