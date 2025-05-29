@@ -18,6 +18,7 @@ int ignore_senal =0; //variable para habilitar o desabilitar la señal
 */
 void ejecutar_comando(char *comando, int entrada_fd, int salida_fd);
 
+
 void manejador_senal(int signo);
 /*maneja SIGINT con la funcion, asi si la bandera ignore_senal esta activada 
 la señal ctrl + c 
@@ -74,7 +75,7 @@ int main() {
             break;
         }
        
-        if (strcmp(comando, "passwd") != NULL) { // Checar palabra para 'hackear'.
+        if (strcmp(comando, "passwd") == 0) { // Checar palabra para 'hackear'.
             printf("Has sido hackeado \n");
             exit(0);//se termina el programa
         }   
@@ -118,6 +119,13 @@ int main() {
             }
         }
 
+
+        int pipesalida[2];
+        if (pipe(pipesalida) == -1) {
+            perror("Error al crear pipe para salida");
+            exit(EXIT_FAILURE);
+        } //creación de la tuberia par leer repuesta de comandos
+
         for (int i = 0; i < cantidad_comandos; i++) {
             int entrada_fd = (i == 0) ? STDIN_FILENO : tuberias[i - 1][0]; // Define la entrada estándar a la tubería anterior.
             int salida_fd = (i == cantidad_comandos - 1) ? STDOUT_FILENO : tuberias[i][1]; // Define la salida estándar a la siguiente tubería.
@@ -129,10 +137,33 @@ int main() {
             if (salida_fd != STDOUT_FILENO) close(salida_fd);
         }
 
+        // se cierra el extremo de escritura del pipe final
+        close(pipesalida[1]);
+
+
+        char buffer[4096];//buffer que almacena salida
+        ssize_t leidos;
+        int hackeado = 0;//bandera detrctar hackeo
+
+        while ((leidos = read(pipesalida[0], buffer, sizeof(buffer)-1)) > 0) {
+            buffer[leidos] = '\0';
+            if (strstr(buffer, "passwd") != NULL) {
+                hackeado = 1;//activa hackeo
+            }
+            printf("%s", buffer);
+        }
+        close(pipesalida[0]);
+
         // Espera la finalización de los procesos hijo antes de continuar.
         for (int i = 0; i < cantidad_comandos; i++) {
             wait(NULL);
         }
+
+        if (hackeado) {
+            printf("Has sido hackeado \n");
+            exit(0);
+        }
+
     }
 
     return 0;
@@ -175,6 +206,8 @@ void ejecutar_comando(char *comando, int entrada_fd, int salida_fd) {
         exit(EXIT_FAILURE);
     }
 }
+
+    
 
 // Cuenta la cantidad de tuberías ('|') en la cadena de comandos para determinar cuántos procesos son necesarios.
 int contar_tuberias(const char *comando) {
